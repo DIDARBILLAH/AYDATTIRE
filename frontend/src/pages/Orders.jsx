@@ -32,6 +32,7 @@ export default function Orders() {
     uploadFile,
     uploadBalanceProof,
     updateRefundInfo,
+    saveOrderRefund,
     loadingOrders,
     dbError,
     refreshOrders,
@@ -368,9 +369,12 @@ export default function Orders() {
                             <button
                               type="button"
                               className="btn btn-primary btn-sm"
-                              onClick={() => setExpandedId((prev) => (prev === o.id ? null : o.id))}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedId((prev) => (prev === o.id ? null : o.id));
+                              }}
                             >
-                              {expandedId === o.id ? "Tutup Detail" : "Kelola & Deposit"}
+                              {isExpanded ? "Tutup Detail" : "Kelola & Deposit"}
                             </button>
                             <Link to={`/pesanan/${o.id}/selesai`} className="btn btn-outline btn-sm">Invoice</Link>
                           </>
@@ -676,7 +680,7 @@ export default function Orders() {
                     </div>
                   )}
 
-                  {isPaid && isExpanded && (
+                  {isExpanded && (
                     <div className="oc-drawer">
                       <div className="oc-drawer-grid">
                         {/* Kolom 1: Pengiriman & Resi Pengembalian (Luar Kota) atau Info Ambil (Dalam Kota) */}
@@ -740,7 +744,14 @@ export default function Orders() {
                                     type="button"
                                     className="link-btn"
                                     disabled={isSaving}
-                                    onClick={() => updateOrder(o.id, { returnShipment: null })}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        await updateOrder(o.id, { returnShipment: null });
+                                      } catch (err) {
+                                        console.error("Gagal mereset resi:", err);
+                                      }
+                                    }}
                                   >
                                     Ubah
                                   </button>
