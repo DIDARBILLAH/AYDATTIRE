@@ -31,6 +31,7 @@ export default function Orders() {
     updateOrder,
     uploadFile,
     uploadBalanceProof,
+    updateRefundInfo,
     loadingOrders,
     dbError,
     refreshOrders,
@@ -114,7 +115,11 @@ export default function Orders() {
         number: cleanNum,
         holder: cleanHolder,
       };
-      await updateOrder(order.id, { refund: updatedRefund });
+      if (typeof updateRefundInfo === "function") {
+        await updateRefundInfo(order.id, updatedRefund);
+      } else {
+        await updateOrder(order.id, { refund: updatedRefund });
+      }
       setEditingRefund((prev) => ({ ...prev, [order.id]: false }));
     } catch (err) {
       setRefundErr((prev) => ({ ...prev, [order.id]: err.message || "Gagal menyimpan rekening refund." }));
@@ -273,6 +278,7 @@ export default function Orders() {
               const isLuar = o?.type === "luar_kota";
               const hasDeposit = o?.security === "deposit";
               const depStatus = o?.depositStatus || "holding";
+              const depPenalty = Number(o?.depositPenalty ?? 0);
               const depIdx = Math.max(0, DEPOSIT_STEPS.findIndex((s) => s.key === depStatus));
               const isExpanded = expandedId === o?.id;
               const isSaving = savingId === o?.id;
@@ -776,9 +782,9 @@ export default function Orders() {
                               <li><strong>Ambil di Butik:</strong> {fmtDate(first?.date)} (10.00 – 17.00 WIB)</li>
                               <li><strong>Hari Acara:</strong> {fmtDate(o?.eventDate)}</li>
                               <li><strong>Batas Kembali:</strong> {fmtDate(retDay?.date)} (Maks. 18.00 WIB)</li>
-                              {(o?.totals?.payLater || 0) > 0 && (
+                              {(o?.totals?.payLater ?? 0) > 0 && (
                                 <li>
-                                  <strong>Status Sisa Pelunasan ({rupiah(o.totals?.payLater || 0)}):</strong>{" "}
+                                  <strong>Status Sisa Pelunasan ({rupiah(o?.totals?.payLater ?? 0)}):</strong>{" "}
                                   {o?.balanceVerified
                                     ? "Lunas Terverifikasi ✓"
                                     : hasBalanceSubmitted
@@ -796,7 +802,12 @@ export default function Orders() {
                           {hasDeposit ? (
                             <>
                               <p className="oc-box-sub">
-                                Nominal Deposit: <strong>{rupiah(o?.totals?.deposit || 0)}</strong>
+                                Nominal Deposit: <strong>{rupiah(o?.totals?.deposit ?? 0)}</strong>
+                                {depPenalty > 0 && (
+                                  <span style={{ color: "var(--maroon)", marginLeft: 6 }}>
+                                    (Denda/Kerusakan: {rupiah(depPenalty)})
+                                  </span>
+                                )}
                               </p>
 
                               {/* Form & Ringkasan Rekening Refund Deposit */}

@@ -918,6 +918,49 @@ export function StoreProvider({ children }) {
         return patch.outboundShipment;
       },
 
+      updateRefundInfo: async (orderId, refundData) => {
+        try {
+          if (!orderId) throw new Error("ID pesanan tidak valid.");
+          const cleanBank = String(refundData?.bank || "BCA").trim();
+          const cleanNumber = String(refundData?.number || "").replace(/\s/g, "");
+          const cleanHolder = String(refundData?.holder || "").trim();
+
+          if (!cleanNumber || cleanNumber.length < 6) {
+            throw new Error("Nomor rekening minimal 6 digit angka.");
+          }
+          if (!cleanHolder) {
+            throw new Error("Nama pemilik rekening wajib diisi.");
+          }
+
+          const refundPayload = {
+            bank: cleanBank,
+            number: cleanNumber,
+            holder: cleanHolder,
+          };
+
+          if (supabase) {
+            const { error } = await supabase
+              .from("orders")
+              .update({ refund: refundPayload })
+              .eq("id", orderId);
+            if (error) {
+              console.error("[StoreContext] updateRefundInfo error:", error);
+              throw new Error(`Gagal menyimpan rekening refund ke database: ${error.message}`);
+            }
+          }
+
+          dispatch({ type: "order/update", id: orderId, patch: { refund: refundPayload } });
+          return refundPayload;
+        } catch (err) {
+          console.error("[StoreContext] updateRefundInfo exception:", err);
+          throw err;
+        }
+      },
+
+      saveOrderRefund: async (orderId, refundData) => {
+        return value.updateRefundInfo(orderId, refundData);
+      },
+
       // ---------- CRUD Katalog Produk (Admin) ----------
       createProduct: async (productData) => {
         const nextId = products.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1;
