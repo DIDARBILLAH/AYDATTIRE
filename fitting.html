@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Booking Fitting — AYDATTIRE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="fitting">
+  <div id="site-header"></div>
+
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <nav class="crumbs"><a href="index.html">Beranda</a> / <span>Fitting</span></nav>
+        <h1>Booking Sesi Fitting</h1>
+        <p>Coba langsung busana pilihan Anda di butik sebelum menyewa. Gratis, maksimal 3 busana per sesi.</p>
+      </div>
+    </section>
+
+    <section class="container fit-page">
+      <!-- ===== Info samping ===== -->
+      <aside class="fit-aside">
+        <div class="info-card">
+          <h4 class="aside-title">Jadwal Sesi</h4>
+          <ul class="sched">
+            <li><span>Sesi 1</span><strong>10:00 – 12:00</strong></li>
+            <li><span>Sesi 2</span><strong>13:00 – 15:00</strong></li>
+            <li><span>Sesi 3</span><strong>15:30 – 17:30</strong></li>
+          </ul>
+          <small class="muted-dark">Buka Senin – Sabtu (WIB). Minggu tutup.</small>
+        </div>
+
+        <div class="info-card">
+          <h4 class="aside-title">Sebelum Datang</h4>
+          <ul class="scheme-list">
+            <li>Datang 10 menit sebelum sesi dimulai.</li>
+            <li>Tunjukkan kode konfirmasi <strong>FIT-xxxxx</strong> ke staf.</li>
+            <li>Pakai pakaian dalam yang nyaman (manset/tanktop).</li>
+            <li>Bawa aksesori atau sepatu yang akan dipakai, jika ada.</li>
+          </ul>
+        </div>
+
+        <div class="info-card note-card">
+          <strong>Fitting tidak mengunci tanggal sewa.</strong>
+          <p>Untuk mengamankan busana di tanggal acara, lanjutkan reservasi dari <a href="katalog.html">katalog</a>.</p>
+        </div>
+      </aside>
+
+      <!-- ===== Form ===== -->
+      <div class="fit-card">
+        <form id="fitForm" novalidate>
+          <div class="form-step"><span>1</span>Pilih Jadwal</div>
+          <div class="fit-row">
+            <label for="fitDate">Tanggal Fitting</label>
+            <input type="date" id="fitDate" required />
+          </div>
+          <div class="fit-row">
+            <label>Pilih Sesi</label>
+            <div class="sessions" id="fitSessions">
+              <p class="hint">Pilih tanggal terlebih dahulu.</p>
+            </div>
+          </div>
+
+          <div class="form-step"><span>2</span>Data Diri</div>
+          <div class="fit-2col">
+            <div class="fit-row">
+              <label for="fitName">Nama</label>
+              <input type="text" id="fitName" placeholder="Nama lengkap" required />
+            </div>
+            <div class="fit-row">
+              <label for="fitWa">No. WhatsApp</label>
+              <input type="tel" id="fitWa" placeholder="08xxxxxxxxxx" required />
+            </div>
+          </div>
+
+          <div class="form-step"><span>3</span>Busana yang Ingin Dicoba</div>
+          <div class="fit-row">
+            <label>Pilih maksimal 3 <small id="pickCount">(0/3 dipilih)</small></label>
+            <div class="pick-list" id="fitItems"></div>
+          </div>
+          <div class="fit-row">
+            <label for="fitNote">Catatan <small>(opsional)</small></label>
+            <textarea id="fitNote" rows="3" placeholder="Contoh: lingkar dada 92 cm, untuk acara lamaran"></textarea>
+          </div>
+
+          <p class="form-error" id="fitError" hidden></p>
+          <button type="submit" class="btn btn-primary btn-block">Konfirmasi Janji Temu</button>
+        </form>
+
+        <div class="fit-ticket" id="fitTicket" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/fitting.js"></script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Katalog — AYDATTIRE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="katalog">
+  <div id="site-header"></div>
+
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <nav class="crumbs"><a href="index.html">Beranda</a> / <span>Katalog</span></nav>
+        <h1>Katalog Busana</h1>
+        <p>Temukan kebaya, beskap, basofi, dan jas yang pas untuk acara Anda.</p>
+      </div>
+    </section>
+
+    <section class="container catalog">
+      <!-- ===== Sidebar filter ===== -->
+      <aside class="filters" id="filters">
+        <div class="filters-head">
+          <h4>Filter</h4>
+          <button class="link-btn" id="resetFilter">Reset</button>
+          <button class="icon-btn close-filter" id="closeFilter" aria-label="Tutup filter">✕</button>
+        </div>
+
+        <div class="f-group">
+          <h5>Kategori</h5>
+          <div class="seg" id="fKategori">
+            <button class="seg-btn active" data-v="semua">Semua</button>
+            <button class="seg-btn" data-v="wanita">Wanita</button>
+            <button class="seg-btn" data-v="pria">Pria</button>
+          </div>
+        </div>
+
+        <div class="f-group">
+          <h5>Jenis Busana</h5>
+          <div class="checks" id="fJenis"></div>
+        </div>
+
+        <div class="f-group">
+          <h5>Ukuran</h5>
+          <div class="size-chips" id="fUkuran">
+            <button data-v="S">S</button><button data-v="M">M</button><button data-v="L">L</button><button data-v="XL">XL</button>
+          </div>
+        </div>
+
+        <div class="f-group">
+          <h5>Warna</h5>
+          <div class="swatches" id="fWarna">
+            <button data-v="Merah"  style="--c:#7a1f2c" title="Merah"></button>
+            <button data-v="Hijau"  style="--c:#8fa58a" title="Hijau"></button>
+            <button data-v="Putih"  style="--c:#f4efe6" title="Putih"></button>
+            <button data-v="Hitam"  style="--c:#1d1b1b" title="Hitam"></button>
+            <button data-v="Biru"   style="--c:#23345e" title="Biru"></button>
+          </div>
+        </div>
+
+        <div class="f-group">
+          <h5>Tema Acara</h5>
+          <div class="checks" id="fTema">
+            <label><input type="checkbox" value="Pernikahan" /> Pernikahan</label>
+            <label><input type="checkbox" value="Lamaran" /> Lamaran</label>
+            <label><input type="checkbox" value="Wisuda" /> Wisuda</label>
+            <label><input type="checkbox" value="Adat" /> Acara Adat</label>
+          </div>
+        </div>
+
+        <div class="f-group">
+          <label class="toggle"><input type="checkbox" id="fAvailable" /> <span>Hanya yang tersedia</span></label>
+        </div>
+      </aside>
+
+      <!-- ===== Konten ===== -->
+      <div class="catalog-main">
+        <div class="toolbar">
+          <div class="search">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" id="fSearch" placeholder="Cari busana…" />
+          </div>
+          <div class="toolbar-right">
+            <span class="count" id="resultCount"></span>
+            <select id="fSort">
+              <option value="populer">Terpopuler</option>
+              <option value="murah">Harga Terendah</option>
+              <option value="mahal">Harga Tertinggi</option>
+              <option value="nama">Nama A–Z</option>
+            </select>
+            <button class="btn btn-outline btn-sm filter-toggle" id="openFilter">Filter</button>
+          </div>
+        </div>
+
+        <div class="product-grid cols-3" id="catalogGrid"></div>
+
+        <div class="empty" id="emptyState" hidden>
+          <div class="empty-icon">🔍</div>
+          <h3>Busana tidak ditemukan</h3>
+          <p>Coba ubah kata kunci atau reset filter.</p>
+          <button class="btn btn-outline btn-sm" id="emptyReset">Reset Filter</button>
+        </div>
+      </div>
+    </section>
+    <div class="filter-backdrop" id="filterBackdrop"></div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/katalog.js"></script>
+</body>
+</html>
