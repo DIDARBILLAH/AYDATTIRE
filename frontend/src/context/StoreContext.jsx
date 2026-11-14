@@ -740,6 +740,7 @@ export function StoreProvider({ children }) {
             }
           }
           if (patch.returnShipment !== undefined) dbPatch.return_shipment = patch.returnShipment;
+          if (patch.refund !== undefined) dbPatch.refund = patch.refund;
           if (patch.depositStatus !== undefined) dbPatch.deposit_status = patch.depositStatus;
           if (patch.depositPenalty !== undefined) dbPatch.deposit_penalty = patch.depositPenalty;
           if (patch.depositRefundProofUrl !== undefined) dbPatch.deposit_refund_proof_url = patch.depositRefundProofUrl;

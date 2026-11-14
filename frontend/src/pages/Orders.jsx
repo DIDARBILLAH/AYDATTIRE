@@ -37,9 +37,12 @@ export default function Orders() {
     isSupabaseConfigured,
   } = useStore();
 
-  const [openId, setOpenId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const [resiForm, setResiForm] = useState({}); // { [orderId]: { courier, number, file } }
   const [resiErr, setResiErr] = useState({});
+  const [refundForm, setRefundForm] = useState({}); // { [orderId]: { bank, number, holder } }
+  const [editingRefund, setEditingRefund] = useState({}); // { [orderId]: boolean }
+  const [refundErr, setRefundErr] = useState({});
   const [savingId, setSavingId] = useState(null);
 
   // State opsi pelunasan per order (sama dengan opsi pembayaran: QRIS, VA, Transfer)
@@ -57,7 +60,7 @@ export default function Orders() {
     o.status === "pending" && Date.now() > o.expiresAt ? { ...o, status: "expired" } : o
   );
 
-  const toggleDetail = (id) => setOpenId((cur) => (cur === id ? null : id));
+  const toggleDetail = (id) => setExpandedId((prev) => (prev === id ? null : id));
 
   const setField = (orderId, key, val) => {
     setResiForm((prev) => ({
@@ -70,6 +73,54 @@ export default function Orders() {
       },
     }));
     setResiErr((prev) => ({ ...prev, [orderId]: "" }));
+  };
+
+  const setRefundField = (orderId, key, val) => {
+    setRefundForm((prev) => ({
+      ...prev,
+      [orderId]: {
+        bank: prev[orderId]?.bank || "BCA",
+        number: prev[orderId]?.number || "",
+        holder: prev[orderId]?.holder || "",
+        [key]: val,
+      },
+    }));
+    setRefundErr((prev) => ({ ...prev, [orderId]: "" }));
+  };
+
+  const handleSaveRefund = async (order) => {
+    const cur = refundForm[order.id] || {
+      bank: order.refund?.bank || "BCA",
+      number: order.refund?.number || "",
+      holder: order.refund?.holder || "",
+    };
+    const cleanNum = (cur.number || "").replace(/\s/g, "");
+    const cleanHolder = (cur.holder || "").trim();
+
+    if (!/^\d{6,18}$/.test(cleanNum)) {
+      setRefundErr((prev) => ({ ...prev, [order.id]: "Nomor rekening harus 6–18 digit angka." }));
+      return;
+    }
+    if (!cleanHolder) {
+      setRefundErr((prev) => ({ ...prev, [order.id]: "Nama pemilik rekening wajib diisi." }));
+      return;
+    }
+
+    setSavingId(order.id);
+    setRefundErr((prev) => ({ ...prev, [order.id]: "" }));
+    try {
+      const updatedRefund = {
+        bank: cur.bank || "BCA",
+        number: cleanNum,
+        holder: cleanHolder,
+      };
+      await updateOrder(order.id, { refund: updatedRefund });
+      setEditingRefund((prev) => ({ ...prev, [order.id]: false }));
+    } catch (err) {
+      setRefundErr((prev) => ({ ...prev, [order.id]: err.message || "Gagal menyimpan rekening refund." }));
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const handleBalanceFileChange = (orderId, file) => {
@@ -209,42 +260,47 @@ export default function Orders() {
         ) : (
           <ul className="order-list">
             {orders.map((o) => {
-              const st = STATUS[o.status] || STATUS.pending;
-              const first = o.schedule[0];
-              const retDay = o.schedule.find((s) => s.role === "kembali") || o.schedule[o.schedule.length - 1];
-              const d = daysUntil(first.date);
-              const t = RENTAL_TYPES[o.type];
-              const isPaid = ["paid", "active", "returned", "completed"].includes(o.status);
-              const isDpOrder = o.payment === "dp";
-              const isLuar = o.type === "luar_kota";
-              const hasDeposit = o.security === "deposit";
-              const depStatus = o.depositStatus || "holding";
-              const depIdx = DEPOSIT_STEPS.findIndex((s) => s.key === depStatus);
-              const isOpen = openId === o.id;
-              const isSaving = savingId === o.id;
-              const isUploadingBalance = balanceUploadingId === o.id;
+              const st = STATUS[o?.status] || STATUS.pending;
+              const first = o?.schedule?.[0] || { label: "Ambil", date: o?.eventDate || todayISO() };
+              const retDay =
+                o?.schedule?.find((s) => s.role === "kembali") ||
+                o?.schedule?.[(o?.schedule?.length || 1) - 1] ||
+                { label: "Kembali", date: o?.eventDate || todayISO() };
+              const d = first?.date ? daysUntil(first.date) : 0;
+              const t = RENTAL_TYPES[o?.type] || { label: "Sewa Kebaya" };
+              const isPaid = ["paid", "active", "returned", "completed"].includes(o?.status);
+              const isDpOrder = o?.payment === "dp";
+              const isLuar = o?.type === "luar_kota";
+              const hasDeposit = o?.security === "deposit";
+              const depStatus = o?.depositStatus || "holding";
+              const depIdx = Math.max(0, DEPOSIT_STEPS.findIndex((s) => s.key === depStatus));
+              const isExpanded = expandedId === o?.id;
+              const isSaving = savingId === o?.id;
+              const isUploadingBalance = balanceUploadingId === o?.id;
 
               // Parameter pelunasan per order
-              const curMethod = balanceMethod[o.id] || "qris";
-              const curBank = balanceBank[o.id] || "BCA";
-              const curFile = balanceFiles[o.id] || null;
+              const curMethod = balanceMethod[o?.id] || "qris";
+              const curBank = balanceBank[o?.id] || "BCA";
+              const curFile = balanceFiles[o?.id] || null;
               const bankInfo = BANKS.find((item) => item.code === curBank) || BANKS[0];
               const cleanWa = String(o?.customer?.wa || "08123456789").replace(/\D/g, "");
-              const vaNumber = VA_PREFIX[curBank] + cleanWa.slice(-8).padStart(8, "0");
-              const hasBalanceSubmitted = Boolean(o.balanceProofUrl || o.balancePaidAt);
-              const showBalanceForm = (!hasBalanceSubmitted || reuploadMode[o.id]) && !o.balanceVerified;
+              const vaNumber = (VA_PREFIX[curBank] || "8801") + cleanWa.slice(-8).padStart(8, "0");
+              const hasBalanceSubmitted = Boolean(o?.balanceProofUrl || o?.balancePaidAt);
+              const showBalanceForm = (!hasBalanceSubmitted || reuploadMode[o?.id]) && !o?.balanceVerified;
 
-              const rf = resiForm[o.id] || {
-                courier: o.returnShipment?.courier || "JNE",
-                number: o.returnShipment?.number || "",
+              const rf = resiForm[o?.id] || {
+                courier: o?.returnShipment?.courier || "JNE",
+                number: o?.returnShipment?.number || "",
                 file: null,
               };
 
               return (
-                <li key={o.id} className={`order-card-wrap ${isOpen ? "open" : ""}`}>
+                <li key={o.id} className={`order-card-wrap ${isExpanded ? "open" : ""}`}>
                   <div className="order-card">
                     <div className="oc-imgs">
-                      {o.items.slice(0, 3).map((it) => <img key={it.productId} src={it.img} alt={it.name} />)}
+                      {(o.items || []).slice(0, 3).map((it) => (
+                        <img key={it.productId || it.id} src={it.img} alt={it.name} />
+                      ))}
                     </div>
                     <div className="oc-body">
                       <div className="oc-top">
@@ -263,11 +319,11 @@ export default function Orders() {
                           )
                         )}
                       </div>
-                      <h4>{o.items.map((i) => `${i.name} (${i.size})`).join(", ")}</h4>
-                      {o.items.some((i) => i.customSize?.isCustom) && (
+                      <h4>{(o.items || []).map((i) => `${i.name} (${i.size})`).join(", ")}</h4>
+                      {(o.items || []).some((i) => i.customSize?.isCustom) && (
                         <ul className="oc-custom-list">
-                          {o.items.filter((i) => i.customSize?.isCustom).map((i) => (
-                            <li key={i.productId}>
+                          {(o.items || []).filter((i) => i.customSize?.isCustom).map((i) => (
+                            <li key={i.productId || i.id}>
                               <strong>Permak {i.name}:</strong> LD {i.customSize.ld} · Panjang {i.customSize.panjang} · Pinggang {i.customSize.pinggang}
                               {i.customSize.note && <em> — “{i.customSize.note}”</em>}
                             </li>
@@ -275,18 +331,18 @@ export default function Orders() {
                         </ul>
                       )}
                       <p className="muted-dark">
-                        Acara {fmtDate(o.eventDate)} · {o.payment === "dp" ? "DP 50%" : "Lunas"} · Jaminan {hasDeposit ? `Deposit ${rupiah(o.totals.deposit)}` : "KTP Fisik"}
+                        Acara {fmtDate(o.eventDate)} · {o.payment === "dp" ? "DP 50%" : "Lunas"} · Jaminan {hasDeposit ? `Deposit ${rupiah(o.totals?.deposit || 0)}` : "KTP Fisik"}
                       </p>
                       {isPaid && d >= 0 && (
                         <p className="oc-count">
-                          {d === 0 ? `${first.label} hari ini!` : `${d} hari lagi menuju ${first.label.toLowerCase()} (${fmtDate(first.date)})`}
+                          {d === 0 ? `${first?.label || "Ambil"} hari ini!` : `${d} hari lagi menuju ${(first?.label || "ambil").toLowerCase()} (${fmtDate(first?.date)})`}
                         </p>
                       )}
                       {isPaid && (isLuar || hasDeposit) && (
                         <div className="oc-tags">
                           {isLuar && (
-                            <span className={`mini-pill ${o.returnShipment ? "ok" : "warn"}`}>
-                              {o.returnShipment ? `Resi Balik: ${o.returnShipment.courier} · ${o.returnShipment.number}` : "Resi balik belum diupload"}
+                            <span className={`mini-pill ${o.returnShipment?.number ? "ok" : "warn"}`}>
+                              {o.returnShipment?.number ? `Resi Balik: ${o.returnShipment?.courier || ""} · ${o.returnShipment.number}` : "Resi balik belum diupload"}
                             </span>
                           )}
                           {hasDeposit && (
@@ -298,18 +354,22 @@ export default function Orders() {
                       )}
                     </div>
                     <div className="oc-right">
-                      <strong>{rupiah(o.totals.grandTotal)}</strong>
+                      <strong>{rupiah(o.totals?.grandTotal || 0)}</strong>
                       <div className="oc-actions">
                         {o.status === "pending" && <Link to={`/pembayaran/${o.id}`} className="btn btn-primary btn-sm">Bayar Sekarang</Link>}
                         {isPaid && (
                           <>
-                            <button type="button" className="btn btn-primary btn-sm" onClick={() => toggleDetail(o.id)}>
-                              {isOpen ? "Tutup Detail" : isLuar || hasDeposit ? "Kelola & Deposit" : "Detail Jadwal"}
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              onClick={() => setExpandedId((prev) => (prev === o.id ? null : o.id))}
+                            >
+                              {expandedId === o.id ? "Tutup Detail" : "Kelola & Deposit"}
                             </button>
                             <Link to={`/pesanan/${o.id}/selesai`} className="btn btn-outline btn-sm">Invoice</Link>
                           </>
                         )}
-                        {(o.status === "expired" || o.status === "cancelled") && o.items[0] && (
+                        {(o.status === "expired" || o.status === "cancelled") && o.items?.[0] && (
                           <Link to={`/produk/${o.items[0].productId}`} className="btn btn-outline btn-sm">Pesan Ulang</Link>
                         )}
                       </div>
@@ -610,7 +670,7 @@ export default function Orders() {
                     </div>
                   )}
 
-                  {isPaid && isOpen && (
+                  {isPaid && isExpanded && (
                     <div className="oc-drawer">
                       <div className="oc-drawer-grid">
                         {/* Kolom 1: Pengiriman & Resi Pengembalian (Luar Kota) atau Info Ambil (Dalam Kota) */}
@@ -619,13 +679,13 @@ export default function Orders() {
                           {isLuar ? (
                             <>
                               <div className="oc-box-sub" style={{ marginBottom: 12 }}>
-                                {o.outboundShipment?.number ? (
+                                {o?.outboundShipment?.number ? (
                                   <div>
                                     <span>Resi kirim dari butik:</span>{" "}
                                     <strong className="mono">
-                                      {o.outboundShipment.courier} • {o.outboundShipment.number}
+                                      {o.outboundShipment?.courier || "JNE"} • {o.outboundShipment.number}
                                     </strong>
-                                    {o.outboundShipment.proofUrl && (
+                                    {o.outboundShipment?.proofUrl && (
                                       <div style={{ marginTop: 4 }}>
                                         <button
                                           type="button"
@@ -633,9 +693,9 @@ export default function Orders() {
                                           onClick={() =>
                                             setPreviewModal({
                                               orderId: o.id,
-                                              title: `Struk Resi Pengiriman Butik (${o.outboundShipment.courier})`,
+                                              title: `Struk Resi Pengiriman Butik (${o.outboundShipment?.courier || "Kurir"})`,
                                               url: o.outboundShipment.proofUrl,
-                                              desc: `Nomor Resi: ${o.outboundShipment.number} • Ekspedisi: ${o.outboundShipment.courier}`,
+                                              desc: `Nomor Resi: ${o.outboundShipment.number} • Ekspedisi: ${o.outboundShipment?.courier || ""}`,
                                             })
                                           }
                                         >
@@ -653,17 +713,19 @@ export default function Orders() {
                                   </div>
                                 )}
                                 <div style={{ marginTop: 4 }}>
-                                  Batas kirim balik ke butik: <strong>{fmtDate(retDay.date)}</strong>
+                                  Batas kirim balik ke butik: <strong>{fmtDate(retDay?.date)}</strong>
                                 </div>
                               </div>
-                              {o.returnShipment ? (
+                              {o?.returnShipment?.number ? (
                                 <div className="resi-done">
                                   <div>
                                     <span>Resi Pengembalian Terkirim</span>
-                                    <strong className="mono">{o.returnShipment.courier} — {o.returnShipment.number}</strong>
+                                    <strong className="mono">{o.returnShipment?.courier || ""} — {o.returnShipment?.number || ""}</strong>
                                     <small>
-                                      Diunggah {new Date(o.returnShipment.submittedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
-                                      {o.returnShipment.proofUrl && (
+                                      {o.returnShipment?.submittedAt && (
+                                        <>Diunggah {new Date(o.returnShipment.submittedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}</>
+                                      )}
+                                      {o.returnShipment?.proofUrl && (
                                         <> · <a href={o.returnShipment.proofUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--maroon)", textDecoration: "underline" }}>Lihat Foto Resi</a></>
                                       )}
                                     </small>
@@ -682,7 +744,7 @@ export default function Orders() {
                                   <div className="resi-inputs">
                                     <select
                                       aria-label="Pilih ekspedisi"
-                                      value={rf.courier}
+                                      value={rf.courier || "JNE"}
                                       onChange={(e) => setField(o.id, "courier", e.target.value)}
                                     >
                                       {COUP_COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -690,7 +752,7 @@ export default function Orders() {
                                     <input
                                       type="text"
                                       placeholder="Masukkan nomor resi balik…"
-                                      value={rf.number}
+                                      value={rf.number || ""}
                                       onChange={(e) => setField(o.id, "number", e.target.value)}
                                     />
                                     <button type="submit" className="btn btn-primary btn-sm" disabled={isSaving}>
@@ -711,16 +773,16 @@ export default function Orders() {
                             </>
                           ) : (
                             <ul className="scheme-list">
-                              <li><strong>Ambil di Butik:</strong> {fmtDate(first.date)} (10.00 – 17.00 WIB)</li>
-                              <li><strong>Hari Acara:</strong> {fmtDate(o.eventDate)}</li>
-                              <li><strong>Batas Kembali:</strong> {fmtDate(retDay.date)} (Maks. 18.00 WIB)</li>
-                              {o.totals.payLater > 0 && (
+                              <li><strong>Ambil di Butik:</strong> {fmtDate(first?.date)} (10.00 – 17.00 WIB)</li>
+                              <li><strong>Hari Acara:</strong> {fmtDate(o?.eventDate)}</li>
+                              <li><strong>Batas Kembali:</strong> {fmtDate(retDay?.date)} (Maks. 18.00 WIB)</li>
+                              {(o?.totals?.payLater || 0) > 0 && (
                                 <li>
-                                  <strong>Status Sisa Pelunasan ({rupiah(o.totals.payLater)}):</strong>{" "}
-                                  {o.balanceVerified
+                                  <strong>Status Sisa Pelunasan ({rupiah(o.totals?.payLater || 0)}):</strong>{" "}
+                                  {o?.balanceVerified
                                     ? "Lunas Terverifikasi ✓"
                                     : hasBalanceSubmitted
-                                    ? `Bukti Terkirim via ${o.balancePayMethod || "Transfer"} (Menunggu Verifikasi Admin)`
+                                    ? `Bukti Terkirim via ${o?.balancePayMethod || "Transfer"} (Menunggu Verifikasi Admin)`
                                     : "Belum Dilunasi"}
                                 </li>
                               )}
@@ -734,9 +796,99 @@ export default function Orders() {
                           {hasDeposit ? (
                             <>
                               <p className="oc-box-sub">
-                                Nominal Deposit: <strong>{rupiah(o.totals.deposit)}</strong>
-                                {o.refund && <> · Rekening tujuan: <strong>{o.refund.bank} {o.refund.number}</strong> a.n. {o.refund.holder}</>}
+                                Nominal Deposit: <strong>{rupiah(o?.totals?.deposit || 0)}</strong>
                               </p>
+
+                              {/* Form & Ringkasan Rekening Refund Deposit */}
+                              <div className="refund-summary-box" style={{ margin: "8px 0 14px", padding: "10px 12px", background: "var(--cream)", borderRadius: 8, fontSize: "0.85rem" }}>
+                                {o?.refund?.number && !editingRefund[o.id] ? (
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                                    <div>
+                                      <span className="muted-dark" style={{ fontSize: "0.78rem", display: "block", marginBottom: 2 }}>Rekening Tujuan Refund Deposit:</span>
+                                      <strong>{o.refund?.bank || ""} • {o.refund?.number || ""}</strong>
+                                      <span style={{ display: "block", color: "var(--muted)", marginTop: 2 }}>a.n. {o.refund?.holder || ""}</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      disabled={isSaving}
+                                      onClick={() => {
+                                        setRefundForm((prev) => ({
+                                          ...prev,
+                                          [o.id]: {
+                                            bank: o.refund?.bank || "BCA",
+                                            number: o.refund?.number || "",
+                                            holder: o.refund?.holder || "",
+                                          },
+                                        }));
+                                        setEditingRefund((prev) => ({ ...prev, [o.id]: true }));
+                                      }}
+                                      style={{ fontSize: "0.8rem", color: "var(--maroon)", fontWeight: 600, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                    >
+                                      Ubah Rekening
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <form
+                                    onSubmit={(e) => {
+                                      e.preventDefault();
+                                      handleSaveRefund(o);
+                                    }}
+                                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                                  >
+                                    <span style={{ fontWeight: 600, color: "var(--maroon-dark)", fontSize: "0.82rem" }}>
+                                      {o?.refund?.number ? "Ubah Rekening Refund Deposit" : "Lengkapi Rekening Refund Deposit"}
+                                    </span>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 8 }}>
+                                      <select
+                                        value={refundForm[o.id]?.bank || o.refund?.bank || "BCA"}
+                                        onChange={(e) => setRefundField(o.id, "bank", e.target.value)}
+                                        style={{ padding: "6px 8px", fontSize: "0.82rem", borderRadius: 6, border: "1px solid var(--border)", background: "#fff" }}
+                                      >
+                                        {BANKS.map((b) => (
+                                          <option key={b.code} value={b.name}>{b.name}</option>
+                                        ))}
+                                      </select>
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="No. Rekening"
+                                        value={refundForm[o.id]?.number ?? o.refund?.number ?? ""}
+                                        onChange={(e) => setRefundField(o.id, "number", e.target.value)}
+                                        style={{ padding: "6px 8px", fontSize: "0.82rem", borderRadius: 6, border: "1px solid var(--border)", background: "#fff" }}
+                                      />
+                                    </div>
+                                    <input
+                                      type="text"
+                                      placeholder="Nama Pemilik Rekening"
+                                      value={refundForm[o.id]?.holder ?? o.refund?.holder ?? ""}
+                                      onChange={(e) => setRefundField(o.id, "holder", e.target.value)}
+                                      style={{ padding: "6px 8px", fontSize: "0.82rem", borderRadius: 6, border: "1px solid var(--border)", background: "#fff" }}
+                                    />
+                                    {refundErr[o.id] && <small className="field-err" style={{ color: "var(--maroon)", fontSize: "0.78rem" }}>{refundErr[o.id]}</small>}
+                                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                                      {o?.refund?.number && (
+                                        <button
+                                          type="button"
+                                          className="btn btn-outline btn-xs"
+                                          disabled={isSaving}
+                                          onClick={() => setEditingRefund((prev) => ({ ...prev, [o.id]: false }))}
+                                        >
+                                          Batal
+                                        </button>
+                                      )}
+                                      <button
+                                        type="submit"
+                                        className="btn btn-primary btn-xs"
+                                        disabled={isSaving}
+                                      >
+                                        {isSaving ? "Menyimpan…" : "Simpan Rekening"}
+                                      </button>
+                                    </div>
+                                  </form>
+                                )}
+                              </div>
+
                               <ol className="dep-tracker">
                                 {DEPOSIT_STEPS.map((step, idx) => {
                                   const stateCls = idx < depIdx ? "done" : idx === depIdx ? "active" : "";
