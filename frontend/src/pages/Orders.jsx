@@ -281,7 +281,7 @@ export default function Orders() {
               const depStatus = o?.depositStatus || "holding";
               const depPenalty = Number(o?.depositPenalty ?? 0);
               const depIdx = Math.max(0, DEPOSIT_STEPS.findIndex((s) => s.key === depStatus));
-              const isExpanded = expandedId === o?.id;
+              const isExpanded = Boolean(expandedId && o?.id && String(expandedId) === String(o.id));
               const isSaving = savingId === o?.id;
               const isUploadingBalance = balanceUploadingId === o?.id;
 
@@ -363,24 +363,46 @@ export default function Orders() {
                     <div className="oc-right">
                       <strong>{rupiah(o.totals?.grandTotal || 0)}</strong>
                       <div className="oc-actions">
-                        {o.status === "pending" && <Link to={`/pembayaran/${o.id}`} className="btn btn-primary btn-sm">Bayar Sekarang</Link>}
+                        {o.status === "pending" && (
+                          <Link
+                            to={`/pembayaran/${o.id}`}
+                            className="btn btn-primary btn-sm"
+                            style={{ position: "relative", zIndex: 5, cursor: "pointer", pointerEvents: "auto" }}
+                          >
+                            Bayar Sekarang
+                          </Link>
+                        )}
                         {isPaid && (
                           <>
                             <button
                               type="button"
                               className="btn btn-primary btn-sm"
+                              style={{ position: "relative", zIndex: 5, cursor: "pointer", pointerEvents: "auto" }}
                               onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
-                                setExpandedId((prev) => (prev === o.id ? null : o.id));
+                                setExpandedId((prev) => (prev && String(prev) === String(o.id) ? null : o.id));
                               }}
                             >
                               {isExpanded ? "Tutup Detail" : "Kelola & Deposit"}
                             </button>
-                            <Link to={`/pesanan/${o.id}/selesai`} className="btn btn-outline btn-sm">Invoice</Link>
+                            <Link
+                              to={`/pesanan/${o.id}/selesai`}
+                              className="btn btn-outline btn-sm"
+                              style={{ position: "relative", zIndex: 5, cursor: "pointer", pointerEvents: "auto" }}
+                            >
+                              Invoice
+                            </Link>
                           </>
                         )}
                         {(o.status === "expired" || o.status === "cancelled") && o.items?.[0] && (
-                          <Link to={`/produk/${o.items[0].productId}`} className="btn btn-outline btn-sm">Pesan Ulang</Link>
+                          <Link
+                            to={`/produk/${o.items[0].productId}`}
+                            className="btn btn-outline btn-sm"
+                            style={{ position: "relative", zIndex: 5, cursor: "pointer", pointerEvents: "auto" }}
+                          >
+                            Pesan Ulang
+                          </Link>
                         )}
                       </div>
                     </div>

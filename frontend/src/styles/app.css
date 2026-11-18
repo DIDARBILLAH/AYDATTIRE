@@ -1049,9 +1049,24 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
+  position: relative;
+  z-index: 5;
 }
 .oc-right > strong { font-family: var(--serif); font-size: 1.45rem; color: var(--maroon); }
-.oc-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.oc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 5;
+}
+.oc-actions .btn {
+  position: relative;
+  z-index: 5;
+  cursor: pointer;
+  pointer-events: auto;
+}
 
 /* Order Expandable Drawer (Resi & Deposit Tracker) */
 .oc-drawer {
@@ -2820,6 +2835,18 @@
     align-items: center;
     padding-top: 12px;
     border-top: 1px solid var(--line);
+    position: relative;
+    z-index: 5;
+  }
+  .oc-actions {
+    position: relative;
+    z-index: 5;
+  }
+  .oc-actions .btn {
+    position: relative;
+    z-index: 5;
+    cursor: pointer;
+    pointer-events: auto;
   }
   .admin-shell { grid-template-columns: 1fr; }
   .admin-topbar { display: flex; }
